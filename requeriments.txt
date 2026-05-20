@@ -1,0 +1,6 @@
+flet
+mysql-connector-python
+qrcode
+pillow
+opencv-python
+pyzbar

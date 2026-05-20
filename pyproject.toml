@@ -5,8 +5,15 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "bcrypt>=5.0.0",
     "flet>=0.85.1",
+    "mysql-connector-python>=9.7.0",
+    "pillow>=12.2.0",
+    "pydantic[email]>=2.13.4",
+    "python-dotenv>=1.2.2",
+    "qrcode>=8.2",
 ]
+
 [project.scripts]
 app="main:main"
 [tool.uv]
