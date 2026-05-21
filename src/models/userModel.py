@@ -5,11 +5,11 @@ class UsuarioModel:
     def __init__(self):
         self.db = Database()
         
-    def email_existe(self, email):
+    def correo_existe(self, correo):
         conn = self.db.get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id_usuario FROM usuario WHERE email = %s",(email,))
+            "SELECT id_usuario FROM usuario WHERE correo = %s",(correo,))
         existe = cursor.fetchone() is not None
         conn.close()
         return existe
@@ -22,11 +22,11 @@ class UsuarioModel:
         conn = self.db.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("""INSERT INTO usuario (nombre,apellido,email,password,fecha_registro) VALUES ( %s,%s,%s,%s,NOW())""",
+            cursor.execute("""INSERT INTO usuario (nombre,apellido,correo,password,fecha_registro) VALUES ( %s,%s,%s,%s,NOW())""",
                 (
                     usuario_data.nombre,
                     usuario_data.apellido,
-                    usuario_data.email,
+                    usuario_data.correo,
                     hashed_pw.decode("utf-8")
                 )
             )
@@ -37,12 +37,12 @@ class UsuarioModel:
             return False
         finally:
             conn.close()
-    def validar_login(self, email, password):
+    def validar_login(self, correo, password):
         conn = self.db.get_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute(
-            "SELECT * FROM usuario WHERE email = %s",
-            (email,)
+            "SELECT * FROM usuario WHERE correo = %s",
+            (correo,)
         )
         user = cursor.fetchone()
         conn.close()
@@ -65,7 +65,7 @@ class UsuarioModel:
             )
             conn = self.db.get_connection()
             cursor = conn.cursor()
-            sql = """UPDATE usuario SET password = %s WHERE email = %s"""
+            sql = """UPDATE usuario SET password = %s WHERE correo = %s"""
             cursor.execute(
                 sql,
                 (hashed_pw.decode("utf-8"),correo)

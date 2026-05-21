@@ -4,10 +4,8 @@ from models.schemasModel import UsuarioSchema
 
 def RegisterView(page: ft.Page, auth_controller):
     
-    # CLAVE SECRETA: Cambia esto por la contraseña que le darás a los maestros de la escuela
     CLAVE_SECRET_DOCENTE = "SIGE_DOCENTE_2026"
 
-    # --- Funciones de utilidad ---
     def mostrar_snackbar(mensaje_texto, color=ft.Colors.GREEN_600):
         snack_bar = ft.SnackBar(
             content=ft.Text(mensaje_texto, color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
@@ -18,7 +16,6 @@ def RegisterView(page: ft.Page, auth_controller):
         snack_bar.open = True
         page.update()
 
-    # --- Función dinámica para alternar campos según el Rol ---
     def cambiar_rol(e):
         rol_actual = list(selector_rol.selected)[0]
         if rol_actual == "alumno":

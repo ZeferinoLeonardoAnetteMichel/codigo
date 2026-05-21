@@ -78,7 +78,7 @@ Este código vence en 5 minutos.
             nuevo_perfil = {
                 "id": user_data['id_usuario'],
                 "nombre": user_data['nombre'],
-                "email": user_data['email'],
+                "correo": user_data['correo'],
                 "fecha": user_data['ultimo_acceso'],
                 "foto": user_data.get(
                     'foto_perfil',
@@ -95,8 +95,8 @@ Este código vence en 5 minutos.
             print(f"No se pudo guardar el perfil local: {e}")
     def registrar(self, usuario_data):
         try:
-            if self.usuario_model.email_existe(
-                usuario_data.email
+            if self.usuario_model.correo_existe(
+                usuario_data.correo
             ):
                 return False, (
                     "El correo electrónico "
