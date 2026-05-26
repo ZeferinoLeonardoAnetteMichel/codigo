@@ -66,6 +66,7 @@ CREATE TABLE `alumnos` (
   `id_alumno` int(11) NOT NULL,
   `matricula` varchar(20) NOT NULL,
   `nombre` varchar(100) NOT NULL,
+  `password` varchar(255) NOT NULL,
   `apellido_paterno` varchar(100) NOT NULL,
   `apellido_materno` varchar(100) DEFAULT NULL,
   `grado` varchar(20) DEFAULT NULL,
