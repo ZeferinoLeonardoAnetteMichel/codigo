@@ -51,23 +51,44 @@ def DashboardView(page: ft.Page, auth_controller=None):
             if tecla == ord("q"):
                 break
 
+        # ... (Todo tu bucle While de OpenCV se queda exactamente igual) ...
+
+        # Liberación obligatoria de recursos de la cámara tras salir del bucle
         cap.release()
         cv2.destroyAllWindows()
 
+        # =========================================================================
+        # NUEVA LÓGICA: PROCESAR EL QR CON EL CONTROLADOR
+        # =========================================================================
         if codigo_detectado:
-            snack_exito = ft.SnackBar(
-                content=ft.Text(f"¡Asistencia Registrada! Código: {codigo_detectado}"),
-                bgcolor=ft.Colors.GREEN_600
-            )
-            page.overlay.append(snack_exito)
-            snack_exito.open = True
+            # Limpiamos el texto por si tiene espacios vacíos accidentales
+            matricula_escaneada = codigo_detectado.strip()
+            
+            # Llamamos al método que creamos en el Paso 1
+            exito_registro, mensaje_bd = auth_controller.registrar_asistencia_qr(matricula_escaneada)
+            
+            if exito_registro:
+                snack_exito = ft.SnackBar(
+                    content=ft.Text(f"¡Genial!: {mensaje_bd} (Matrícula: {matricula_escaneada})"),
+                    bgcolor=ft.Colors.GREEN_600
+                )
+                page.overlay.append(snack_exito)
+                snack_exito.open = True
+            else:
+                snack_error = ft.SnackBar(
+                    content=ft.Text(f"Error: {mensaje_bd}"),
+                    bgcolor=ft.Colors.ORANGE_700
+                )
+                page.overlay.append(snack_error)
+                snack_error.open = True
         else:
-            snack_error = ft.SnackBar(
-                content=ft.Text("No se detectó ningún QR o se canceló el escaneo."),
+            # Caso en que cerraron la cámara con la tecla 'q' sin escanear nada
+            snack_cancelado = ft.SnackBar(
+                content=ft.Text("Escaneo cancelado. No se detectó ningún código."),
                 bgcolor=ft.Colors.RED_600
             )
-            page.overlay.append(snack_error)
-            snack_error.open = True
+            page.overlay.append(snack_cancelado)
+            snack_cancelado.open = True
 
         page.update()
 

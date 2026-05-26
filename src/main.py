@@ -26,6 +26,9 @@ def start(page: ft.Page):
         elif page.route == "/register": 
             page.views.append(RegisterView(page, auth_ctrl))
             
+        #  SOLUCIÓN: Pásale explícitamente tu variable auth_controller
+        elif page.route == "/asistencia" or page.route == "/asistencia":
+            page.views.append(AsistenciaView(page, auth_ctrl))
         # 3. Panel de Control (Dedicado y protegido por Roles)
         elif page.route == "/dashboard":
             rol = getattr(page, "user_role", None)

@@ -63,14 +63,9 @@ def AsistenciaView(page: ft.Page, auth_controller=None):
     )
 
     # =========================================================================
-    # 2. AHORA SÍ COLOCAMOS TU FUNCIÓN (Ya que puede "ver" las variables de arriba)
+    # 2. FUNCIÓN DE ACTUALIZACIÓN (RELOAD)
     # =========================================================================
     def actualizar_lista(e):
-        # NOTA: Cuando conectes tu base de datos, aquí llamarías a tu controlador:
-        # nonlocal alumnos_presentes, alumnos_ausentes
-        # alumnos_presentes = auth_controller.obtener_asistencias_db()
-        # alumnos_ausentes = auth_controller.obtener_ausencias_db()
-
         tabla_presentes.rows.clear()
         tabla_ausentes.rows.clear()
         
@@ -102,49 +97,84 @@ def AsistenciaView(page: ft.Page, auth_controller=None):
         snack = ft.SnackBar(ft.Text("¡Lista de asistencia actualizada con éxito!"), bgcolor=ft.Colors.GREEN_600)
         page.overlay.append(snack)
         snack.open = True
-        
-        # Actualizamos la pantalla completa una sola vez al final
         page.update()
 
     # =========================================================================
-    # 3. PESTAÑAS (Tabs) DE NAVEGACIÓN
+    # 3. INTERFAZ DINÁMICA DE PESTAÑAS (COMPATIBILIDAD TOTAL) 🚀
     # =========================================================================
-    contenedor_pestanas = ft.Tabs(
-        selected_index=0,
-        animation_duration=250,
-        indicator_color=ft.Colors.PURPLE_600,
-        label_color=ft.Colors.PURPLE_800,
-        unselected_label_color=ft.Colors.BLUE_GREY_400,
-        tabs=[
-            ft.Tab(
-                text="Presentes",
-                icon=ft.Icons.PERSON_PIN_ROUNDED,
-                content=ft.ListView([
-                    ft.Container(height=10),
-                    ft.Text("Alumnos que escanearon el QR exitosamente hoy:", size=14, color=ft.Colors.BLUE_GREY_600, italic=True),
-                    ft.Container(height=10),
-                    ft.Container(content=tabla_presentes, bgcolor=ft.Colors.WHITE, padding=10, border_radius=10)
-                ], spacing=10, expand=True)
-            ),
-            ft.Tab(
-                text="Ausentes",
-                icon=ft.Icons.PERSON_OFF_ROUNDED,
-                content=ft.ListView([
-                    ft.Container(height=10),
-                    ft.Text("Alumnos pendientes de registrar asistencia:", size=14, color=ft.Colors.BLUE_GREY_600, italic=True),
-                    ft.Container(height=10),
-                    ft.Container(content=tabla_ausentes, bgcolor=ft.Colors.WHITE, padding=10, border_radius=10)
-                ], spacing=10, expand=True)
-            )
-        ],
-        expand=True
+    # =========================================================================
+    # 3. INTERFAZ DINÁMICA DE PESTAÑAS (COMPATIBILIDAD ULTRA SEGURA) 🚀
+    # =========================================================================
+    vista_presentes = ft.ListView([
+        ft.Container(height=10),
+        ft.Row([
+            ft.Icon(ft.Icons.PERSON_PIN_ROUNDED, color=ft.Colors.PURPLE_700),
+            ft.Text("ALUMNOS PRESENTES", weight=ft.FontWeight.BOLD, color=ft.Colors.PURPLE_700, size=16)
+        ], alignment=ft.MainAxisAlignment.START, spacing=10),
+        ft.Text("Alumnos que escanearon el QR exitosamente hoy:", size=14, color=ft.Colors.BLUE_GREY_600, italic=True),
+        ft.Container(height=10),
+        ft.Container(content=tabla_presentes, bgcolor=ft.Colors.WHITE, padding=10, border_radius=10)
+    ], spacing=10, expand=True)
+
+    vista_ausentes = ft.ListView([
+        ft.Container(height=10),
+        ft.Row([
+            ft.Icon(ft.Icons.PERSON_OFF_ROUNDED, color=ft.Colors.RED_700),
+            ft.Text("ALUMNOS AUSENTES", weight=ft.FontWeight.BOLD, color=ft.Colors.RED_700, size=16)
+        ], alignment=ft.MainAxisAlignment.START, spacing=10),
+        ft.Text("Alumnos pendientes de registrar asistencia:", size=14, color=ft.Colors.BLUE_GREY_600, italic=True),
+        ft.Container(height=10),
+        ft.Container(content=tabla_ausentes, bgcolor=ft.Colors.WHITE, padding=10, border_radius=10)
+    ], spacing=10, expand=True)
+
+    # El contenedor del cuerpo arranca mostrando la lista de presentes
+    seccion_activa = ft.Container(content=vista_presentes, expand=True)
+
+    # Controlador para cambiar de tabla al hacer clic
+    def cambiar_seccion(e):
+        # Evaluamos el contenido del texto interno del botón de forma segura
+        if e.control.data == "presentes":
+            seccion_activa.content = vista_presentes
+            btn_ver_presentes.bgcolor = ft.Colors.PURPLE_100
+            btn_ver_ausentes.bgcolor = ft.Colors.TRANSPARENT
+        else:
+            seccion_activa.content = vista_ausentes
+            btn_ver_ausentes.bgcolor = ft.Colors.RED_100
+            btn_ver_presentes.bgcolor = ft.Colors.TRANSPARENT
+        page.update()
+
+    # Botones usando 'content' y 'data' para evitar parámetros conflictivos de Flet
+    btn_ver_presentes = ft.Container(
+        content=ft.Row([ft.Icon(ft.Icons.PERSON_PIN_ROUNDED, color=ft.Colors.PURPLE_800), ft.Text("Presentes", color=ft.Colors.PURPLE_800)], alignment=ft.MainAxisAlignment.CENTER, spacing=5),
+        bgcolor=ft.Colors.PURPLE_100,
+        padding=10,
+        border_radius=8,
+        on_click=cambiar_seccion,
+        data="presentes"
     )
+    
+    btn_ver_ausentes = ft.Container(
+        content=ft.Row([ft.Icon(ft.Icons.PERSON_OFF_ROUNDED, color=ft.Colors.BLUE_GREY_400), ft.Text("Ausentes", color=ft.Colors.BLUE_GREY_400)], alignment=ft.MainAxisAlignment.CENTER, spacing=5),
+        bgcolor=ft.Colors.TRANSPARENT,
+        padding=10,
+        border_radius=8,
+        on_click=cambiar_seccion,
+        data="ausentes"
+    )
+
+    # Estructura limpia que emula las pestañas nativas
+    contenedor_pestanas = ft.Column([
+        ft.Row([btn_ver_presentes, btn_ver_ausentes], alignment=ft.MainAxisAlignment.START, spacing=10),
+        ft.Divider(height=1, color=ft.Colors.PURPLE_200),
+        ft.Container(height=10),
+        seccion_activa
+    ], expand=True)
 
     # =========================================================================
     # 4. RETORNO DE LA ESTRUCTURA GLOBAL DE LA VISTA
     # =========================================================================
     return ft.View(
-        route="/asistencia",
+        route="/login",
         bgcolor=ft.Colors.BLUE_GREY_50,
         appbar=ft.AppBar(
             leading=ft.IconButton(icon=ft.Icons.ARROW_BACK, icon_color=ft.Colors.WHITE, on_click=volver_al_dashboard),
@@ -152,7 +182,6 @@ def AsistenciaView(page: ft.Page, auth_controller=None):
             bgcolor=ft.Colors.PURPLE_600,
             color=ft.Colors.WHITE,
             actions=[
-                # Aquí vinculamos tu función al botón físico de refresh
                 ft.IconButton(icon=ft.Icons.REFRESH, icon_color=ft.Colors.WHITE, tooltip="Recargar Lista", on_click=actualizar_lista),
                 ft.Container(width=10)
             ]

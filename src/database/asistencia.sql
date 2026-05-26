@@ -86,7 +86,8 @@ CREATE TABLE `asistencia` (
   `id_alumno` int(11) NOT NULL,
   `id_qr` int(11) NOT NULL,
   `fecha_hora` datetime DEFAULT current_timestamp(),
-  `estado` enum('PRESENTE','RETARDO','FALTA') DEFAULT 'PRESENTE'
+  `estado` enum('PRESENTE','RETARDO','FALTA') DEFAULT 'PRESENTE',
+  `matricula` VARCHAR(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
