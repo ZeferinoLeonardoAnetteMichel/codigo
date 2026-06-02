@@ -33,8 +33,9 @@ def DashboardView(page: ft.Page, auth_controller=None):
         detector = cv2.QRCodeDetector()
 
         snack = ft.SnackBar(
-            content=ft.Text("Cámara abierta. Muestra el código QR del salón..."),
-            bgcolor=ft.Colors.PURPLE_700
+            content=ft.Text("Cámara abierta. Muestra el código QR del salón...", color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
+            bgcolor=ft.Colors.INDIGO_600,
+            duration=2500,
         )
         page.overlay.append(snack)
         snack.open = True
@@ -69,7 +70,6 @@ def DashboardView(page: ft.Page, auth_controller=None):
             if tecla == ord("q"):
                 break
 
-        # Liberación obligatoria de recursos de la cámara tras salir del bucle
         cap.release()
         cv2.destroyAllWindows()
 
@@ -77,37 +77,33 @@ def DashboardView(page: ft.Page, auth_controller=None):
         # LÓGICA DE PROCESAMIENTO: OPCIÓN B (Registra al alumno de la sesión) 🚀
         # =========================================================================
         if codigo_detectado:
-            # Verificamos que el controlador realmente exista y no sea None
             if auth_controller is not None:
-                # INTEGRADO OPCIÓN B: Enviamos 'matricula_usuario' en vez del texto del QR
                 exito_registro, mensaje_bd = auth_controller.registrar_asistencia_qr(matricula_usuario)
                 
                 if exito_registro:
                     snack_exito = ft.SnackBar(
-                        content=ft.Text(f"¡Asistencia Registrada!: {mensaje_bd} (Matrícula: {matricula_usuario})"),
+                        content=ft.Text(f"¡Asistencia Registrada!: {mensaje_bd} (Matrícula: {matricula_usuario})", color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
                         bgcolor=ft.Colors.GREEN_600
                     )
                     page.overlay.append(snack_exito)
                     snack_exito.open = True
                 else:
                     snack_error = ft.SnackBar(
-                        content=ft.Text(f"Error: {mensaje_bd}"),
+                        content=ft.Text(f"Error: {mensaje_bd}", color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
                         bgcolor=ft.Colors.ORANGE_700
                     )
                     page.overlay.append(snack_error)
                     snack_error.open = True
             else:
-                # Mensaje de error seguro si el controlador sigue sin aparecer
                 snack_error_interno = ft.SnackBar(
-                    content=ft.Text("Error de sistema: No se pudo enlazar el controlador de asistencia."),
+                    content=ft.Text("Error de sistema: No se pudo enlazar el controlador de asistencia.", color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
                     bgcolor=ft.Colors.RED_700
                 )
                 page.overlay.append(snack_error_interno)
                 snack_error_interno.open = True
         else:
-            # Caso en que cerraron la cámara con la tecla 'q' sin escanear nada
             snack_cancelado = ft.SnackBar(
-                content=ft.Text("Escaneo cancelado. No se detectó ningún código."),
+                content=ft.Text("Escaneo cancelado. No se detectó ningún código.", color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
                 bgcolor=ft.Colors.RED_600
             )
             page.overlay.append(snack_cancelado)
@@ -116,57 +112,48 @@ def DashboardView(page: ft.Page, auth_controller=None):
         page.update()
 
     # =========================================================================
-    # COMPONENTES VISUALES CON DATOS REALES
+    # COMPONENTES VISUALES REDISEÑADOS (IGUAL A REGISTERVIEW)
     # =========================================================================
+    
     tarjeta_info = ft.Container(
         content=ft.Column([
             ft.Row([
-                ft.Icon(ft.Icons.ACCOUNT_CIRCLE_OUTLINED, size=40, color=ft.Colors.PURPLE_600),
-                ft.Text("Información de Usuario", size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.PURPLE_800)
+                ft.Icon(ft.Icons.ACCOUNT_CIRCLE_OUTLINED, size=24, color=ft.Colors.INDIGO_600),
+                ft.Text("Información de Usuario", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.INDIGO_600)
             ], alignment=ft.MainAxisAlignment.START, spacing=10),
-            ft.Divider(color=ft.Colors.PURPLE_300),
+            ft.Divider(height=10, color=ft.Colors.GREY_200),
             
-            ft.Row([ft.Icon(ft.Icons.PERSON, color=ft.Colors.PURPLE_700), ft.Text(nombre_completo, size=14)]),
-            ft.Row([ft.Icon(ft.Icons.CARD_MEMBERSHIP, color=ft.Colors.PURPLE_700), ft.Text(f"Matrícula: {matricula_usuario}", size=14)]),
-            ft.Row([ft.Icon(ft.Icons.EMAIL, color=ft.Colors.PURPLE_700), ft.Text(correo_usuario, size=14)]),
+            ft.Row([ft.Icon(ft.Icons.PERSON, color=ft.Colors.GREY_600, size=20), ft.Text(nombre_completo, size=14, color=ft.Colors.GREY_800)]),
+            ft.Row([ft.Icon(ft.Icons.CARD_MEMBERSHIP, color=ft.Colors.GREY_600, size=20), ft.Text(f"Matrícula: {matricula_usuario}", size=14, color=ft.Colors.GREY_800)]),
+            ft.Row([ft.Icon(ft.Icons.EMAIL, color=ft.Colors.GREY_600, size=20), ft.Text(correo_usuario, size=14, color=ft.Colors.GREY_800)]),
         ], spacing=12),
-        bgcolor=ft.Colors.WHITE,
-        padding=25,
-        border_radius=12,
+        bgcolor=ft.Colors.GREY_50,
+        padding=20,
+        border_radius=10,
     )
 
-    tarjeta_camara = ft.Container(
-        content=ft.Column([
-            ft.Icon(ft.Icons.QR_CODE_SCANNER, size=80, color=ft.Colors.PURPLE_600),
-            ft.Text("Escanear Código de Asistencia", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.PURPLE_800),
-            ft.Text("Presiona el botón para abrir la cámara y escanear el QR de la clase.", size=12, color=ft.Colors.BLUE_GREY_500, text_align=ft.TextAlign.CENTER),
-            ft.Container(height=10),
-            ft.ElevatedButton(
-                "Escanear QR",
-                icon=ft.Icons.CAMERA_ALT,
-                style=ft.ButtonStyle(bgcolor=ft.Colors.PURPLE_600, color=ft.Colors.WHITE),
-                on_click=encender_camara_qr
-            )
-        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=10),
-        bgcolor=ft.Colors.WHITE,
-        padding=25,
-        border_radius=12,
+    btn_escanear = ft.ElevatedButton(
+        "Escanear QR",
+        icon=ft.Icons.CAMERA_ALT,
+        width=300,
+        height=50,
+        bgcolor=ft.Colors.INDIGO_600,
+        color=ft.Colors.WHITE,
+        style=ft.ButtonStyle(
+            shape=ft.RoundedRectangleBorder(radius=10)
+        ),
+        on_click=encender_camara_qr
     )
 
-    diseño_pantalla = ft.ListView([
-        ft.Text(f"¡Bienvenido, {nombre_usuario}!", size=24, weight=ft.FontWeight.BOLD, color=ft.Colors.PURPLE_800),
-        ft.Container(height=10),
-        tarjeta_info,
-        ft.Container(height=15),
-        tarjeta_camara
-    ], spacing=10, expand=True)
-
+    # =========================================================================
+    # RETORNO DE LA VISTA EN CORRESPONDENCIA CON EL DISEÑO DE REGISTRO
+    # =========================================================================
     return ft.View(
         route="/dashboard",
-        bgcolor=ft.Colors.BLUE_GREY_50,
+        bgcolor=ft.Colors.GREY_100, # Mismo color de fondo que RegisterView
         appbar=ft.AppBar(
-            title=ft.Text("ScanClass - Panel Alumno"),
-            bgcolor=ft.Colors.PURPLE_600,
+            title=ft.Text("ScanClass - Panel Alumno", weight=ft.FontWeight.BOLD),
+            bgcolor=ft.Colors.INDIGO_600, # Navbar a juego con los botones del registro
             color=ft.Colors.WHITE,
             automatically_imply_leading=False,
             actions=[
@@ -174,5 +161,81 @@ def DashboardView(page: ft.Page, auth_controller=None):
                 ft.Container(width=10)
             ]
         ),
-        controls=[diseño_pantalla]
+        controls=[
+            # Forzamos un Row centrado horizontalmente
+            ft.Row(
+                alignment=ft.MainAxisAlignment.CENTER,
+                controls=[
+                    # Forzamos una Column centrada verticalmente
+                    ft.Column(
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        controls=[
+                            ft.Container(
+                                width=550, # Mismo ancho que tu contenedor de registro
+                                height=page.height - 140 if page.height else 650, # Ajuste para compensar el AppBar
+                                bgcolor=ft.Colors.WHITE,
+                                border_radius=20,
+                                padding=35,
+                                shadow=ft.BoxShadow(
+                                    spread_radius=1,
+                                    blur_radius=20,
+                                    color=ft.Colors.BLACK12,
+                                    offset=ft.Offset(0, 5),
+                                ),
+                                content=ft.ListView(
+                                    controls=[
+                                        ft.Column(
+                                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                                            tight=True,
+                                            spacing=15,
+                                            controls=[
+                                                ft.Icon(
+                                                    ft.Icons.SCHOOL,
+                                                    size=60,
+                                                    color=ft.Colors.INDIGO_600,
+                                                ),
+                                                ft.Text(
+                                                    f"¡Bienvenido, {nombre_usuario}!",
+                                                    size=26,
+                                                    weight=ft.FontWeight.BOLD,
+                                                    text_align=ft.TextAlign.CENTER
+                                                ),
+                                                ft.Text(
+                                                    "Sistema SIGE - ScanClass",
+                                                    color=ft.Colors.GREY_600,
+                                                    size=14,
+                                                ),
+                                                ft.Divider(height=10),
+                                                ft.Container(height=5),
+                                                
+                                                # Tarjeta con los datos de sesión reales
+                                                tarjeta_info,
+                                                
+                                                ft.Container(height=10),
+                                                
+                                                # Texto descriptivo de la acción del QR
+                                                ft.Text(
+                                                    "Presiona el botón para abrir la cámara y escanear el QR de la clase.", 
+                                                    size=13, 
+                                                    color=ft.Colors.GREY_600, 
+                                                    text_align=ft.TextAlign.CENTER
+                                                ),
+                                                
+                                                ft.Container(height=5),
+                                                
+                                                # Botón idéntico al de Registro
+                                                btn_escanear,
+                                            ]
+                                        )
+                                    ],
+                                    expand=True
+                                )
+                            )
+                        ]
+                    )
+                ],
+                expand=True 
+            )
+        ],
     )
