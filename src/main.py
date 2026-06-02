@@ -11,8 +11,9 @@ def start(page: ft.Page):
     page.window_width = 450
     page.window_height = 700
     
-    # Inicializamos el controlador de autenticación
+    # Inicializamos el controlador de autenticación y lo asignamos directamente a la página
     auth_ctrl = AuthController()
+    page.auth_ctrl = auth_ctrl 
 
     # --- MANEJADOR DE RUTAS (Navegación limpia) ---
     def route_change(e):
@@ -26,23 +27,24 @@ def start(page: ft.Page):
         elif page.route == "/register": 
             page.views.append(RegisterView(page, auth_ctrl))
             
-        #  SOLUCIÓN: Pásale explícitamente tu variable auth_controller
-        elif page.route == "/asistencia" or page.route == "/asistencia":
+        # 3. Pantalla directa de asistencia
+        elif page.route == "/asistencia":
             page.views.append(AsistenciaView(page, auth_ctrl))
-        # 3. Panel de Control (Dedicado y protegido por Roles)
+
+        # 4. Panel de Control (Dedicado y protegido por Roles)
         elif page.route == "/dashboard":
             rol = getattr(page, "user_role", None)
             
             if rol == "maestro":
-                page.views.append(AsistenciaView(page))
+                page.views.append(AsistenciaView(page, auth_controller=auth_ctrl))
             elif rol == "alumno":
-                page.views.append(DashboardView(page))
+                page.views.append(DashboardView(page, auth_controller=auth_ctrl))
             else:
                 # Si intentan forzar la URL /dashboard sin loguearse, limpieza total y al Login
                 page.route = "/"
                 page.views.append(LoginView(page, auth_ctrl))
                 
-        # 4. Manejo de errores por si colapsa una ruta o queda vacía
+        # 5. Manejo de errores por si colapsa una ruta o queda vacía
         if not page.views:
             page.views.append(
                 ft.View("/error", [ft.Text("Error: Ruta no encontrada o vista vacía")])

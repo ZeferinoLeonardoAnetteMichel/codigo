@@ -46,7 +46,7 @@ class UsuarioModel:
             cursor.execute(
                 query,
                 (
-                    matricula,
+                    str(matricula).strip(),
                     nombre,
                     correo,
                     password_hash.decode("utf-8") if isinstance(password_hash, bytes) else password_hash
@@ -94,7 +94,7 @@ class UsuarioModel:
             conn.close()
 
     # =========================================================================
-    # ACCIÓN: ACTUALIZAR CONTRASEÑA (Reparada de la sección rota de Git)
+    # ACCIÓN: ACTUALIZAR CONTRASEÑA
     # =========================================================================
     def actualizar_password(self, correo, nueva_password):
         salt = bcrypt.gensalt()
@@ -128,11 +128,81 @@ class UsuarioModel:
         VALUES (%s, CURDATE(), CURTIME(), 'Presente')
         """
         try:
-            cursor.execute(query, (matricula,))
+            # Añadido .strip() para limpiar cualquier espacio en blanco invisible del QR
+            cursor.execute(query, (str(matricula).strip(),))
             conn.commit()
             return True
         except Exception as e:
             print(f"Error al registrar asistencia en BD: {e}")
+            return False
+        finally:
+            cursor.close()
+            conn.close()
+
+    # =========================================================================
+    # CONSULTAR PRESENTES DE HOY (Filtrado y Reparado) 🚀
+    # =========================================================================
+    def consultar_presentes_hoy(self):
+        conn = self.db.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # CORREGIDO: '%h:%i %p' genera de manera correcta el formato 'Hora:Minuto AM/PM'
+        query = """
+        SELECT a.matricula, al.nombre, DATE_FORMAT(a.hora, '%%h:%%i %%p') AS hora 
+        FROM asistencias a
+        INNER JOIN alumnos al ON STRIP(a.matricula) = STRIP(al.matricula)
+        WHERE a.fecha = CURDATE() AND al.matricula != 'DOCENTE'
+        ORDER BY a.hora DESC
+        """
+        try:
+            cursor.execute(query)
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error al consultar alumnos presentes: {e}")
+            return []
+        finally:
+            cursor.close()
+            conn.close()
+
+    # =========================================================================
+    # CONSULTAR AUSENTES DE HOY (Filtrado) 🚀
+    # =========================================================================
+    # =========================================================================
+    # CONSULTAR PRESENTES DE HOY (Filtrado y Corregido con TRIM) 🚀
+    # =========================================================================
+    def consultar_presentes_hoy(self):
+        conn = self.db.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # SOLUCIÓN: Usamos un string normal y dejamos los % simples para MySQL
+        query = (
+            "SELECT a.matricula, al.nombre, DATE_FORMAT(a.hora, '%h:%i %p') AS hora "
+            "FROM asistencias a "
+            "INNER JOIN alumnos al ON TRIM(a.matricula) = TRIM(al.matricula) "
+            "WHERE a.fecha = CURDATE() AND al.matricula != 'DOCENTE' "
+            "ORDER BY a.hora DESC"
+        )
+        try:
+            cursor.execute(query)
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Error al consultar alumnos presentes: {e}")
+            return []
+        finally:
+            cursor.close()
+            conn.close()
+    def verificar_asistencia_existente(self, matricula):
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+        
+        # Busca si la matrícula ya tiene un registro con la fecha del día de hoy
+        query = "SELECT COUNT(*) FROM asistencias WHERE TRIM(matricula) = TRIM(%s) AND fecha = CURDATE()"
+        try:
+            cursor.execute(query, (matricula,))
+            resultado = cursor.fetchone()
+            return resultado[0] > 0  # Devuelve True si ya existe, False si está limpio
+        except Exception as e:
+            print(f"Error al verificar duplicados: {e}")
             return False
         finally:
             cursor.close()

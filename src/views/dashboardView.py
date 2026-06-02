@@ -3,6 +3,24 @@ import cv2
 
 def DashboardView(page: ft.Page, auth_controller=None):
     
+    # =========================================================================
+    # RESPALDO: Si no llegó por parámetro, lo recuperamos directamente de la page
+    # =========================================================================
+    if auth_controller is None:
+        auth_controller = getattr(page, "auth_ctrl", None)
+    
+    # =========================================================================
+    # EXTRAER INFORMACIÓN REAL DE LA SESIÓN (Mapeo dinámico)
+    # =========================================================================
+    user_info = getattr(page, "user_data", {}) or {}
+    
+    nombre_usuario = user_info.get("nombre", "Usuario")
+    apellido_usuario = user_info.get("apellido", "")
+    nombre_completo = f"{nombre_usuario} {apellido_usuario}".strip()
+    
+    correo_usuario = user_info.get("correo", "Sin correo registrado")
+    matricula_usuario = user_info.get("matricula", "S/M")
+
     # --- FUNCION: CERRAR SESIÓN ---
     def cerrar_sesion(e):
         page.user_data = None
@@ -15,7 +33,7 @@ def DashboardView(page: ft.Page, auth_controller=None):
         detector = cv2.QRCodeDetector()
 
         snack = ft.SnackBar(
-            content=ft.Text("Cámara abierta. Muestra tu código QR..."),
+            content=ft.Text("Cámara abierta. Muestra el código QR del salón..."),
             bgcolor=ft.Colors.PURPLE_700
         )
         page.overlay.append(snack)
@@ -51,36 +69,41 @@ def DashboardView(page: ft.Page, auth_controller=None):
             if tecla == ord("q"):
                 break
 
-        # ... (Todo tu bucle While de OpenCV se queda exactamente igual) ...
-
         # Liberación obligatoria de recursos de la cámara tras salir del bucle
         cap.release()
         cv2.destroyAllWindows()
 
         # =========================================================================
-        # NUEVA LÓGICA: PROCESAR EL QR CON EL CONTROLADOR
+        # LÓGICA DE PROCESAMIENTO: OPCIÓN B (Registra al alumno de la sesión) 🚀
         # =========================================================================
         if codigo_detectado:
-            # Limpiamos el texto por si tiene espacios vacíos accidentales
-            matricula_escaneada = codigo_detectado.strip()
-            
-            # Llamamos al método que creamos en el Paso 1
-            exito_registro, mensaje_bd = auth_controller.registrar_asistencia_qr(matricula_escaneada)
-            
-            if exito_registro:
-                snack_exito = ft.SnackBar(
-                    content=ft.Text(f"¡Genial!: {mensaje_bd} (Matrícula: {matricula_escaneada})"),
-                    bgcolor=ft.Colors.GREEN_600
-                )
-                page.overlay.append(snack_exito)
-                snack_exito.open = True
+            # Verificamos que el controlador realmente exista y no sea None
+            if auth_controller is not None:
+                # INTEGRADO OPCIÓN B: Enviamos 'matricula_usuario' en vez del texto del QR
+                exito_registro, mensaje_bd = auth_controller.registrar_asistencia_qr(matricula_usuario)
+                
+                if exito_registro:
+                    snack_exito = ft.SnackBar(
+                        content=ft.Text(f"¡Asistencia Registrada!: {mensaje_bd} (Matrícula: {matricula_usuario})"),
+                        bgcolor=ft.Colors.GREEN_600
+                    )
+                    page.overlay.append(snack_exito)
+                    snack_exito.open = True
+                else:
+                    snack_error = ft.SnackBar(
+                        content=ft.Text(f"Error: {mensaje_bd}"),
+                        bgcolor=ft.Colors.ORANGE_700
+                    )
+                    page.overlay.append(snack_error)
+                    snack_error.open = True
             else:
-                snack_error = ft.SnackBar(
-                    content=ft.Text(f"Error: {mensaje_bd}"),
-                    bgcolor=ft.Colors.ORANGE_700
+                # Mensaje de error seguro si el controlador sigue sin aparecer
+                snack_error_interno = ft.SnackBar(
+                    content=ft.Text("Error de sistema: No se pudo enlazar el controlador de asistencia."),
+                    bgcolor=ft.Colors.RED_700
                 )
-                page.overlay.append(snack_error)
-                snack_error.open = True
+                page.overlay.append(snack_error_interno)
+                snack_error_interno.open = True
         else:
             # Caso en que cerraron la cámara con la tecla 'q' sin escanear nada
             snack_cancelado = ft.SnackBar(
@@ -93,22 +116,6 @@ def DashboardView(page: ft.Page, auth_controller=None):
         page.update()
 
     # =========================================================================
-    # EXTRAER INFORMACIÓN REAL DE LA SESIÓN (Mapeo dinámico)
-    # =========================================================================
-    # Recuperamos el diccionario que guardaste en LoginView. Si por alguna razón
-    # viene vacío, ponemos un diccionario por defecto para que no rompa la app.
-    user_info = getattr(page, "user_data", {}) or {}
-    
-    # Extraemos los campos (Ajusta los nombres dentro de .get() según tus columnas de la BD)
-    # Por ejemplo, si en tu BD se llama 'name' en lugar de 'nombre', cámbialo aquí.
-    nombre_usuario = user_info.get("nombre", "Usuario")
-    apellido_usuario = user_info.get("apellido", "")
-    nombre_completo = f"{nombre_usuario} {apellido_usuario}".strip()
-    
-    correo_usuario = user_info.get("correo", "Sin correo registrado")
-    matricula_usuario = user_info.get("matricula", "S/M")
-
-    # =========================================================================
     # COMPONENTES VISUALES CON DATOS REALES
     # =========================================================================
     tarjeta_info = ft.Container(
@@ -119,7 +126,6 @@ def DashboardView(page: ft.Page, auth_controller=None):
             ], alignment=ft.MainAxisAlignment.START, spacing=10),
             ft.Divider(color=ft.Colors.PURPLE_300),
             
-            # Aquí inyectamos las variables dinámicas que acabamos de extraer
             ft.Row([ft.Icon(ft.Icons.PERSON, color=ft.Colors.PURPLE_700), ft.Text(nombre_completo, size=14)]),
             ft.Row([ft.Icon(ft.Icons.CARD_MEMBERSHIP, color=ft.Colors.PURPLE_700), ft.Text(f"Matrícula: {matricula_usuario}", size=14)]),
             ft.Row([ft.Icon(ft.Icons.EMAIL, color=ft.Colors.PURPLE_700), ft.Text(correo_usuario, size=14)]),
@@ -133,7 +139,7 @@ def DashboardView(page: ft.Page, auth_controller=None):
         content=ft.Column([
             ft.Icon(ft.Icons.QR_CODE_SCANNER, size=80, color=ft.Colors.PURPLE_600),
             ft.Text("Escanear Código de Asistencia", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.PURPLE_800),
-            ft.Text("Presiona el botón para abrir la cámara de tu dispositivo.", size=12, color=ft.Colors.BLUE_GREY_500, text_align=ft.TextAlign.CENTER),
+            ft.Text("Presiona el botón para abrir la cámara y escanear el QR de la clase.", size=12, color=ft.Colors.BLUE_GREY_500, text_align=ft.TextAlign.CENTER),
             ft.Container(height=10),
             ft.ElevatedButton(
                 "Escanear QR",

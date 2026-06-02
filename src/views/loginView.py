@@ -1,4 +1,5 @@
 import flet as ft
+import re
 
 def LoginView(page: ft.Page, auth_controller):
 
@@ -9,7 +10,7 @@ def LoginView(page: ft.Page, auth_controller):
 
     def mostrar_snackbar(mensaje_texto, color=ft.Colors.GREEN):
         snack_bar = ft.SnackBar(
-            content=ft.Text(mensaje_texto),
+            content=ft.Text(mensaje_texto, color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
             bgcolor=color,
             duration=2500,
         )
@@ -18,40 +19,41 @@ def LoginView(page: ft.Page, auth_controller):
         page.update()
 
     # =========================================================================
-    # COMPONENTES DEL MODAL DE RECUPERACIÓN
+    # COMPONENTES DEL MODAL DE RECUPERACIÓN (Estilizados)
     # =========================================================================
     correo_recuperacion = ft.TextField(
         label="Introduce tu correo electrónico",
-        width=350,
+        prefix_icon="email",
+        border_radius=10,
         autofocus=True
     )
 
     codigo_verificacion = ft.TextField(
         label="Introduce el código recibido",
-        width=350,
+        prefix_icon="numbers",
+        border_radius=10,
         visible=False
     )
 
     nueva_password = ft.TextField(
         label="Nueva contraseña",
+        prefix_icon="lock",
         password=True,
         can_reveal_password=True,
-        width=350,
+        border_radius=10,
         visible=False
     )
 
     confirmar_password = ft.TextField(
         label="Confirmar contraseña",
+        prefix_icon="lock_outline",
         password=True,
         can_reveal_password=True,
-        width=350,
+        border_radius=10,
         visible=False
     )
 
-    msg_dialogo = ft.Text(
-        "",
-        color="red"
-    )
+    msg_dialogo = ft.Text("", color="red")
 
     def ejecutar_recuperacion(e):
         try:
@@ -67,7 +69,6 @@ def LoginView(page: ft.Page, auth_controller):
                     page.update()
                     return
 
-                # Validación temporal / Invocación al controlador
                 exito, resultado = (True, "Código enviado") if not hasattr(auth_controller, "enviar_correo_recuperacion") else auth_controller.enviar_correo_recuperacion(correo_ingresado)
 
                 if exito:
@@ -194,32 +195,27 @@ def LoginView(page: ft.Page, auth_controller):
     # =========================================================================
     correo = ft.TextField(
         label="Correo electrónico",
-        prefix_icon=ft.Icons.PERSON,
-        width=400,
+        prefix_icon="person",
         border_radius=10,
-        border_color="purple",
         keyboard_type=ft.KeyboardType.EMAIL
     )
     
     contraseña = ft.TextField(
         label="Contraseña",
-        prefix_icon=ft.Icons.KEY,
+        prefix_icon="lock",
         password=True,
         can_reveal_password=True,
-        width=400,
         border_radius=10,
-        border_color="purple"
     )
     
-    mensaje = ft.Text("", color="red")
+    mensaje = ft.Text("", color=ft.Colors.RED_ACCENT_400, size=12)
 
     # =========================================================================
-    # LOGICA DE INICIO DE SESIÓN INTEGRADA (REDIRECCIÓN POR ROL) 🚀
+    # LOGICA DE INICIO DE SESIÓN INTEGRADA
     # =========================================================================
     def login_click(e):
         if not correo.value or not contraseña.value:
-            mensaje.value = "Por favor, llene todos los campos"
-            mensaje.color = "red"
+            mensaje.value = "Por favor, llene todos los campos."
             page.update()
             return
         
@@ -229,28 +225,27 @@ def LoginView(page: ft.Page, auth_controller):
             page.user_data = user
             mostrar_snackbar("¡Sesión iniciada correctamente!", ft.Colors.GREEN)
 
-            # ¡FILTRO INTELIGENTE!: Evaluamos la matrícula para definir el rol de navegación
             if user.get("matricula") == "DOCENTE":
                 page.user_role = "maestro"
-                page.go("/asistencia")  # Envía al panel de profesores
+                page.go("/asistencia")  
             else:
                 page.user_role = "alumno"
-                page.go("/dashboard")          # Envía al panel de alumnos
+                page.go("/dashboard")          
         else:
-            mensaje.value = msg
-            mensaje.color = "red"
+            text_error = msg if msg else "Credenciales incorrectas"
+            mensaje.value = text_error
             page.update()
 
     iniciar_sesion = ft.ElevatedButton(
         "Iniciar sesión",
-        width=250,
-        on_click=login_click,
+        width=300,
+        height=50,
+        bgcolor=ft.Colors.INDIGO_600,
+        color=ft.Colors.WHITE,
         style=ft.ButtonStyle(
-            bgcolor=ft.Colors.PURPLE_200,
-            color=ft.Colors.WHITE,
-            padding=20,
-            shape=ft.RoundedRectangleBorder(radius=12),
+            shape=ft.RoundedRectangleBorder(radius=10)
         ),
+        on_click=login_click,
     )
 
     btn_registro = ft.TextButton(
@@ -265,34 +260,73 @@ def LoginView(page: ft.Page, auth_controller):
 
     contraseña.on_submit = login_click
 
+    # =========================================================================
+    # RETORNO DE LA VISTA CENTRADA E IGUAL AL REGISTRO
+    # =========================================================================
     return ft.View(
         route="/",
-        vertical_alignment=ft.MainAxisAlignment.CENTER,
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-        appbar=ft.AppBar(
-            title=ft.Text("SIGE - Login"),
-            bgcolor=ft.Colors.PURPLE_200,
-            color=ft.Colors.WHITE
-        ),
+        bgcolor=ft.Colors.GREY_100,
         controls=[
-            ft.Column(
-                [
-                    ft.Text("Acceso al Sistema", size=35, weight="bold", color="purple"),
-                    ft.Container(height=10),
-                    correo,
-                    ft.Container(height=10),
-                    contraseña,
-                    ft.Container(height=10),
-                    mensaje,
-                    ft.Container(height=10),
-                    ft.Row([iniciar_sesion], alignment=ft.MainAxisAlignment.CENTER),
-                    ft.Container(height=10),
-                    btn_olvido_password,
-                    btn_registro
+            ft.Row(
+                alignment=ft.MainAxisAlignment.CENTER,
+                controls=[
+                    ft.Column(
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        controls=[
+                            ft.Container(
+                                width=550,
+                                height=page.height - 80 if page.height else 600, # Altura adaptada para Login
+                                bgcolor=ft.Colors.WHITE,
+                                border_radius=20,
+                                padding=35,
+                                shadow=ft.BoxShadow(
+                                    spread_radius=1,
+                                    blur_radius=20,
+                                    color=ft.Colors.BLACK12,
+                                    offset=ft.Offset(0, 5),
+                                ),
+                                content=ft.ListView(
+                                    controls=[
+                                        ft.Column(
+                                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                                            tight=True,
+                                            spacing=15,
+                                            controls=[
+                                                ft.Icon(
+                                                    ft.Icons.SCHOOL,
+                                                    size=60,
+                                                    color=ft.Colors.INDIGO_600,
+                                                ),
+                                                ft.Text(
+                                                    "Acceso al Sistema",
+                                                    size=28,
+                                                    weight=ft.FontWeight.BOLD,
+                                                ),
+                                                ft.Text(
+                                                    "Sistema SIGE - ScanClass",
+                                                    color=ft.Colors.GREY_600,
+                                                    size=14,
+                                                ),
+                                                ft.Divider(height=10),
+                                                ft.Container(height=5),
+                                                correo,
+                                                contraseña,
+                                                mensaje,
+                                                ft.Container(height=5),
+                                                iniciar_sesion,
+                                                btn_olvido_password,
+                                                btn_registro
+                                            ]
+                                        )
+                                    ],
+                                    expand=True
+                                )
+                            )
+                        ]
+                    )
                 ],
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                tight=True,
-                spacing=10
+                expand=True
             )
-        ]
+        ],
     )
