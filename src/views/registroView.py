@@ -67,7 +67,20 @@ def RegisterView(page: ft.Page, auth_controller):
         prefix_icon="numbers",
         border_radius=10,
     )
+    # En tu formulario de registro
+    grado = ft.TextField(
+    label="Grado (ej: 1,2,6)", 
+    hint_text="Escribe el grupo tal cual, ej: 6"
+)
+    grupo = ft.TextField(
+    label="Grupo (ej: A,B,D)", 
+    hint_text="Escribe el grupo tal cual, ej: D"
+)
 
+# Al momento de registrar, pasas el valor del campo
+# auth_controller.registrar(matricula, nombre, correo, password, campo_grupo.value.strip().upper())
+# Y al llamar al controlador:
+# auth_controller.registrar(matricula, nombre, correo, password, grupo_dropdown.value)
     email = ft.TextField(
         label="Correo electrónico",
         prefix_icon="email",
@@ -144,12 +157,18 @@ def RegisterView(page: ft.Page, auth_controller):
             return
 
         matricula_envio = matricula.value.strip() if rol_actual == "alumno" else "DOCENTE"
+        grupo_envio = grupo.value.strip().upper() if rol_actual == "alumno" else "N/A"
+        grado_envio = "6"
 
         exito, msg = auth_controller.registrar(
             matricula=matricula_envio,
             nombre=nombre.value.strip(),
+            apellido_paterno=apellido_paterno.value.strip(),
+            apellido_materno=apellido_materno.value.strip(),
             correo=email.value.strip(),
-            password=password.value
+            password=password.value,
+            grupo=grupo_envio,
+            grado=grado_envio  # <--- Agrega este parámetro
         )
         
         if exito:
@@ -158,6 +177,8 @@ def RegisterView(page: ft.Page, auth_controller):
             apellido_paterno.value = ""
             apellido_materno.value = ""
             matricula.value = ""
+            grupo.value=""
+            grado.value=""
             codigo_token.value = ""
             email.value = ""
             password.value = ""
@@ -241,6 +262,8 @@ def RegisterView(page: ft.Page, auth_controller):
                                                 nombre,
                                                 apellido_paterno,
                                                 apellido_materno,
+                                                grado,
+                                                grupo,
                                                 campos_alumno,
                                                 campo_seguridad_maestro,
                                                 email,
