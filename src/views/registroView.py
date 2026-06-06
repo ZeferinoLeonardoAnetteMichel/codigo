@@ -2,10 +2,8 @@ import flet as ft
 import re
 
 def RegisterView(page: ft.Page, auth_controller):
-
     CLAVE_SECRET_DOCENTE = "SIGE_DOCENTE_2026"
 
-    # --- FUNCIONES AUXILIARES DE INTERFAZ ---
     def mostrar_snackbar(mensaje_texto, color=ft.Colors.GREEN_600):
         snack_bar = ft.SnackBar(
             content=ft.Text(mensaje_texto, color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
@@ -21,19 +19,14 @@ def RegisterView(page: ft.Page, auth_controller):
 
     def cambiar_rol(e):
         rol_actual = list(selector_rol.selected)[0]
-
         if rol_actual == "alumno":
             campos_alumno.visible = True
             campo_seguridad_maestro.visible = False
         else:
             campos_alumno.visible = False
             campo_seguridad_maestro.visible = True
-
         mensaje.value = ""
-        page.update()
-
-    # --- COMPONENTES PRINCIPALES DEL FORMULARIO ---
-    
+        page.update()    
     selector_rol = ft.SegmentedButton(
         selected=["alumno"],
         segments=[
@@ -42,32 +35,27 @@ def RegisterView(page: ft.Page, auth_controller):
         ],
         show_selected_icon=False,
         on_change=cambiar_rol,
-    )
-    
+    ) 
     nombre = ft.TextField(
         label="Nombre(s)",
         prefix_icon="person",
         border_radius=10,
     )
-
     apellido_paterno = ft.TextField(
         label="Apellido Paterno",
         prefix_icon="person_outline",
         border_radius=10,
     )
-
     apellido_materno = ft.TextField(
         label="Apellido Materno (Opcional)",
         prefix_icon="person_outline",
         border_radius=10,
     )
-
     matricula = ft.TextField(
         label="Matrícula",
         prefix_icon="numbers",
         border_radius=10,
     )
-    # En tu formulario de registro
     grado = ft.TextField(
     label="Grado (ej: 1,2,6)", 
     hint_text="Escribe el grupo tal cual, ej: 6"
@@ -76,17 +64,11 @@ def RegisterView(page: ft.Page, auth_controller):
     label="Grupo (ej: A,B,D)", 
     hint_text="Escribe el grupo tal cual, ej: D"
 )
-
-# Al momento de registrar, pasas el valor del campo
-# auth_controller.registrar(matricula, nombre, correo, password, campo_grupo.value.strip().upper())
-# Y al llamar al controlador:
-# auth_controller.registrar(matricula, nombre, correo, password, grupo_dropdown.value)
     email = ft.TextField(
         label="Correo electrónico",
         prefix_icon="email",
         border_radius=10,
     )
-
     password = ft.TextField(
         label="Contraseña",
         prefix_icon="lock",
@@ -94,7 +76,6 @@ def RegisterView(page: ft.Page, auth_controller):
         can_reveal_password=True,
         border_radius=10,
     )
-
     confirm_password = ft.TextField(
         label="Confirmar contraseña",
         prefix_icon="lock_outline",
@@ -102,7 +83,6 @@ def RegisterView(page: ft.Page, auth_controller):
         can_reveal_password=True,
         border_radius=10,
     )
-
     codigo_token = ft.TextField(
         label="Código de Seguridad Docente",
         prefix_icon="security",
@@ -110,27 +90,20 @@ def RegisterView(page: ft.Page, auth_controller):
         can_reveal_password=True,
         border_radius=10,
     )
-
     mensaje = ft.Text("", color=ft.Colors.RED_ACCENT_400, size=12)
-
-    # --- CONTENEDORES DINÁMICOS SEGÚN EL ROL ---
     campos_alumno = ft.Column([matricula], visible=True, spacing=10)
     campo_seguridad_maestro = ft.Column([codigo_token], visible=False, spacing=10)
 
-    # --- MANEJADOR DEL EVENTO CLICK REGISTRAR ---
     def registrar_click(e):
         rol_actual = list(selector_rol.selected)[0]
-
         if not nombre.value or not apellido_paterno.value or not email.value or not password.value or not confirm_password.value:
             mensaje.value = "Por favor, llena todos los campos obligatorios."
             page.update()
             return
-        
         if rol_actual == "alumno" and not matricula.value:
             mensaje.value = "La matrícula es obligatoria para alumnos."
             page.update()
             return
-
         if rol_actual == "maestro":
             if not codigo_token.value:
                 mensaje.value = "Introduce el código de autorización docente."
@@ -140,26 +113,21 @@ def RegisterView(page: ft.Page, auth_controller):
                 mensaje.value = "Código docente inválido. No tienes autorización."
                 page.update()
                 return
-        
         if password.value != confirm_password.value:
             mensaje.value = "Las contraseñas no coinciden."
             page.update()
             return
-        
         if len(password.value) < 6:
             mensaje.value = "La contraseña debe tener al menos 6 caracteres."
             page.update()
             return
-        
         if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", email.value):
             mensaje.value = "Correo electrónico inválido."
             page.update()
             return
-
         matricula_envio = matricula.value.strip() if rol_actual == "alumno" else "DOCENTE"
         grupo_envio = grupo.value.strip().upper() if rol_actual == "alumno" else "N/A"
         grado_envio = "6"
-
         exito, msg = auth_controller.registrar(
             matricula=matricula_envio,
             nombre=nombre.value.strip(),
@@ -168,9 +136,8 @@ def RegisterView(page: ft.Page, auth_controller):
             correo=email.value.strip(),
             password=password.value,
             grupo=grupo_envio,
-            grado=grado_envio  # <--- Agrega este parámetro
-        )
-        
+            grado=grado_envio  
+        ) 
         if exito:
             mostrar_snackbar("¡Registro exitoso! Ahora inicia sesión")
             nombre.value = ""
@@ -188,9 +155,7 @@ def RegisterView(page: ft.Page, auth_controller):
             page.go("/")
         else:
             mensaje.value = msg or "Error al registrar usuario."
-            page.update()
-            
-    # --- BOTONES DE ACCIÓN ---
+            page.update()            
     btn_registrar = ft.ElevatedButton(
         "Registrarse",
         width=300,
@@ -202,29 +167,24 @@ def RegisterView(page: ft.Page, auth_controller):
         ),
         on_click=registrar_click,
     )
-    
     btn_login = ft.TextButton(
         "¿Ya tienes cuenta? Inicia sesión",
         on_click=ir_login,
-    )
-    
-    # --- RETORNO DE LA VISTA COMPATIBLE ---
+    )    
     return ft.View(
         route="/register",
         bgcolor=ft.Colors.GREY_100,
         controls=[
-            # Forzamos un Row centrado horizontalmente
             ft.Row(
                 alignment=ft.MainAxisAlignment.CENTER,
                 controls=[
-                    # Forzamos una Column centrada verticalmente
                     ft.Column(
                         alignment=ft.MainAxisAlignment.CENTER,
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                         controls=[
                             ft.Container(
                                 width=550,
-                                height=page.height - 80 if page.height else 700, # Evita que se salga arriba y abajo
+                                height=page.height - 80 if page.height else 700, 
                                 bgcolor=ft.Colors.WHITE,
                                 border_radius=20,
                                 padding=35,
@@ -282,7 +242,7 @@ def RegisterView(page: ft.Page, auth_controller):
                         ]
                     )
                 ],
-                expand=True # Ocupa todo el espacio para poder calcular el centro exacto
+                expand=True 
             )
         ],
     )
