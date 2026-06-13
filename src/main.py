@@ -6,7 +6,7 @@ from views.dashboardView import DashboardView
 from views.asistenciaView import AsistenciaView      
 
 def start(page: ft.Page):
-    page.title = "Sistema SIGE - ScanClass"
+    page.title = "Escaner Dinamico - ScanClass"
     page.window_width = 450
     page.window_height = 700    
     auth_ctrl = AuthController()

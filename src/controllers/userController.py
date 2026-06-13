@@ -1,36 +1,30 @@
 from models.userModel import UsuarioModel
-class AuthController:
 
+
+class AuthController:
     def __init__(self):
         self.user_model = UsuarioModel()
-        self.codigos_recuperacion = {}
-
-    def registrar(self, matricula, nombre, apellido_paterno, apellido_materno, grado, grupo, correo, password):
+        self.usuario_actual_id = None
+    def registrar(self, rol, matricula, nombre, apellido_paterno, apellido_materno, grado, grupo, correo, password):
         try:
-            if hasattr(self.user_model, "correo_existe") and self.user_model.correo_existe(correo):
-                return False, "El correo electrónico ya está registrado."
-            self.user_model.registrar_alumno(
-                matricula=matricula,
-                nombre=nombre,
-                correo=correo,
-                password=password,
-                grupo=grupo,
-                grado=grado,
-                apellido_paterno=apellido_paterno,
-                apellido_materno=apellido_materno
-            )
-            return True, "Usuario registrado exitosamente"
+            if self.user_model.correo_existe(correo):
+                return False, "El correo ya está registrado."
+
+            if rol == "alumno":
+                self.user_model.registrar_alumno(matricula, nombre, apellido_paterno, apellido_materno, grado, grupo, correo, password)
+            else:
+                nombre_completo = f"{nombre} {apellido_paterno}".strip()
+                self.user_model.registrar_docente(nombre_completo, correo, password)
+            return True, "Registrado exitosamente"
         except Exception as e:
-            return False, f"Error en registro: {str(e)}"
+            return False, f"Error: {str(e)}"
 
     def login(self, correo, password, page):
-        try:
-            user = self.user_model.login_alumno(correo, password)
-            if user:
-                return user, "Correcto"
-            return None, "Correo o contraseña incorrectos"
-        except Exception as e:
-            return None, f"Error en login: {str(e)}"
+        user = self.user_model.login_usuario(correo, password)
+        print("DEBUG USER:", user)
+        if user:
+            return user, "Correcto"
+        return None, "Correo o contraseña incorrectos"
 
     def verificar_codigo_recuperacion(self, correo, codigo_ingresado):
         try:
@@ -45,6 +39,7 @@ class AuthController:
                 return False, "El código introducido es incorrecto."
         except Exception as e:
             return False, f"Error al verificar código: {str(e)}"
+        
 
     def cambiar_password(self, correo, nueva_password):
         try:
@@ -73,6 +68,8 @@ class AuthController:
         
     def obtener_qr_activo(self):
         return self.user_model.obtener_qr_activo()
+    def rotar_codigo_qr(self):
+        return self.user_model.rotar_codigo_qr()
 
     def obtener_alumnos_presentes(self, nombre_grupo):
         try:
@@ -102,3 +99,55 @@ class AuthController:
         except Exception as e:
             print(f"Error en obtener_alumnos_ausentes: {e}")
             return []
+    # --- MÉTODOS PARA GESTIÓN DE SESIÓN Y GRUPOS ---
+
+    def set_usuario_actual(self, id_usuario):
+        """Guarda el ID del maestro que acaba de iniciar sesión."""
+        self.usuario_actual_id = id_usuario
+
+    def get_usuario_actual_id(self):
+        """Retorna el ID del maestro actual."""
+        return self.usuario_actual_id
+
+    def obtener_grupos_de_maestro(self, id_maestro):
+        """Consulta la base de datos para traer solo los grupos de este maestro."""
+        # Asegúrate de que tu UsuarioModel tenga acceso a la DB o haz la consulta aquí directamente
+        # Ejemplo usando self.user_model (ajusta según tu estructura real)
+        conn = self.user_model.db.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        query = "SELECT nombre_grupo FROM maestro_grupo WHERE id_maestro = %s"
+        cursor.execute(query, (id_maestro,))
+        resultados = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return [r['nombre_grupo'] for r in resultados]
+
+    def guardar_nuevo_grupo(self, id_maestro, nombre_grupo):
+        """Guarda un nuevo grupo asociado al maestro en la base de datos."""
+        conn = self.user_model.db.get_connection()
+        cursor = conn.cursor()
+        try:
+            query = "INSERT INTO maestro_grupo (id_maestro, nombre_grupo) VALUES (%s, %s)"
+            cursor.execute(query, (id_maestro, nombre_grupo))
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"Error al guardar grupo: {e}")
+            return False
+        finally:
+            cursor.close(); conn.close()
+
+    def eliminar_asignacion_grupo(self, id_maestro, nombre_grupo):
+        """Elimina la relación grupo-maestro de la base de datos."""
+        conn = self.user_model.db.get_connection()
+        cursor = conn.cursor()
+        try:
+            query = "DELETE FROM maestro_grupo WHERE id_maestro = %s AND nombre_grupo = %s"
+            cursor.execute(query, (id_maestro, nombre_grupo))
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"Error al eliminar grupo: {e}")
+            return False
+        finally:
+            cursor.close(); conn.close()

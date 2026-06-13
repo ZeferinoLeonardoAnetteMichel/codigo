@@ -1,55 +1,79 @@
 from models.databaseModel import Database
 import bcrypt
-class UsuarioModel:
+import uuid
+from datetime import datetime, timedelta
 
+class UsuarioModel:
     def __init__(self):
         self.db = Database()
 
+    # --- MÉTODO CORREGIDO Y UNIFICADO ---
+    def login_usuario(self, correo, password):
+        conn = self.db.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        try:
+            # Intentar en alumnos
+            cursor.execute("SELECT *, 'alumno' AS rol FROM alumnos WHERE correo = %s", (correo,))
+            user = cursor.fetchone()
+            
+            # Si no, buscar en usuarios (docentes)
+            if not user:
+                cursor.execute("SELECT *, 'maestro' AS rol FROM usuarios WHERE correo = %s", (correo,))
+                user = cursor.fetchone()
+
+            if user:
+                # Asegurar que el hash almacenado sea bytes antes de comparar
+                stored_password = user["password"]
+                if isinstance(stored_password, str):
+                    stored_password = stored_password.encode("utf-8")
+                
+                if bcrypt.checkpw(password.encode("utf-8"), stored_password):
+                    user["id"] = user.get("id_usuario") or user.get("id_alumno")
+                    return user
+        except Exception as e:
+            print("ERROR LOGIN:", e)
+            return None
+        finally:
+            cursor.close(); conn.close()
+
+    # --- MÉTODO QUE FALTABA (evita el error 'no attribute') ---
     def correo_existe(self, correo):
         conn = self.db.get_connection()
         cursor = conn.cursor()
+        query = "SELECT correo FROM alumnos WHERE correo = %s UNION SELECT correo FROM usuarios WHERE correo = %s"
         try:
-            cursor.execute("SELECT matricula FROM alumnos WHERE correo = %s", (correo,))
+            cursor.execute(query, (correo, correo))
             return cursor.fetchone() is not None
-        finally:
-            cursor.close(); conn.close()
-    
-    def login_alumno(self, correo, password):
-        conn = self.db.get_connection()
-        cursor = conn.cursor(dictionary=True)
-        query = "SELECT * FROM alumnos WHERE correo = %s"
-        try:
-            cursor.execute(query, (correo,))
-            user = cursor.fetchone()
-            if user:
-                password_correcta = bcrypt.checkpw(
-                    password.encode("utf-8"),
-                    user["password"].encode("utf-8")
-                )
-                if password_correcta:
-                    return user
-            return None
-        except Exception as e:
-            print(f"Error en login_alumno: {e}")
-            return None
         finally:
             cursor.close(); conn.close()
 
     def registrar_alumno(self, matricula, nombre, apellido_paterno, apellido_materno, grado, grupo, correo, password):
         conn = self.db.get_connection()
         cursor = conn.cursor()
-        password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
-        query = """
-        INSERT INTO alumnos (matricula, nombre, apellido_paterno, apellido_materno, grado, grupo, correo, password) 
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """
+        # Generar hash y DECODIFICAR a string (importante)
+        password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        query = "INSERT INTO alumnos (matricula, nombre, apellido_paterno, apellido_materno, grado, grupo, correo, password) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
         try:
-            cursor.execute(query, (matricula, nombre, apellido_paterno, apellido_materno, grado, grupo, correo, password_hash))            
+            cursor.execute(query, (matricula, nombre, apellido_paterno, apellido_materno, grado, grupo, correo, password_hash))
             conn.commit()
             return True
         finally:
             cursor.close(); conn.close()
-            
+
+    def registrar_docente(self, nombre, correo, password):
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+        # Generar hash y DECODIFICAR a string (importante)
+        password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        query = "INSERT INTO usuarios (nombre, correo, password, rol) VALUES (%s, %s, %s, 'DOCENTE')"
+        try:
+            cursor.execute(query, (nombre, correo, password_hash))
+            conn.commit()
+            return True
+        finally:
+            cursor.close(); conn.close()
+    # ... (Mantén aquí tus otros métodos: actualizar_password, insertar_asistencia, consultar_presentes_hoy, rotar_codigo_qr, obtener_qr_activo)
+        
     def actualizar_password(self, correo, nueva_password):
         salt = bcrypt.gensalt()
         hashed_pw = bcrypt.hashpw(nueva_password.encode("utf-8"), salt)
@@ -65,30 +89,47 @@ class UsuarioModel:
             return False
         finally:
             cursor.close(); conn.close()
+            
+    # En tu AuthController
+    def obtener_grupos_de_maestro(self, id_maestro):
+    # Debug: Imprime para ver si el id_maestro llega bien
+        print(f"DEBUG: Consultando grupos para maestro ID: {id_maestro}")
+    
+        conn = self.user_model.db.get_connection()
+        cursor = conn.cursor(dictionary=True)
+    # Asegúrate de que esta tabla y columnas existan
+        cursor.execute("SELECT nombre_grupo FROM maestro_grupo WHERE id_maestro = %s", (id_maestro,))
+        resultados = cursor.fetchall()
+        cursor.close()
+        conn.close()
+    
+        grupos = [r['nombre_grupo'] for r in resultados]
+        print(f"DEBUG: Grupos encontrados: {grupos}")
+        return grupos
 
     def insertar_asistencia(self, matricula):
         conn = self.db.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute("SELECT id_alumno FROM alumnos WHERE TRIM(matricula) = TRIM(%s)", (matricula,))
+            # 1. Obtener ID del alumno
+            cursor.execute("SELECT id_alumno FROM alumnos WHERE matricula = %s", (matricula,))
             res = cursor.fetchone()
             if not res: return False
             id_alumno = res[0]
+
+            # 2. Obtener QR activo
             cursor.execute("SELECT id_qr FROM codigos_qr WHERE activo = 1 LIMIT 1")
             res_qr = cursor.fetchone()
-            id_qr = res_qr[0] if res_qr else 1
-            query = """
-            INSERT INTO asistencia (id_alumno, id_qr, matricula, fecha, hora, estatus)
-            VALUES (%s, %s, %s, CURDATE(), CURTIME(), 'Presente')
-            """
+            if not res_qr: return False
+            id_qr = res_qr[0]
+            query = """INSERT INTO asistencia (id_alumno, id_qr, matricula, fecha, hora, estatus) 
+                    VALUES (%s, %s, %s, CURDATE(), CURTIME(), 'Presente')"""
             cursor.execute(query, (id_alumno, id_qr, matricula))
             conn.commit()
             return True
         except Exception as e:
-            print(f"Error en insertar_asistencia: {e}")
+            print(f"Error técnico: {e}")
             return False
-        finally:
-            cursor.close(); conn.close()
 
     def verificar_asistencia_existente(self, matricula):
         conn = self.db.get_connection()
@@ -127,7 +168,6 @@ class UsuarioModel:
             return []
         finally:
             cursor.close(); conn.close()
-    import uuid 
 
     def rotar_codigo_qr(self):
         conn = self.db.get_connection()
@@ -135,11 +175,20 @@ class UsuarioModel:
         try:
             cursor.execute("UPDATE codigos_qr SET activo = 0")
             nuevo_codigo = str(uuid.uuid4())
-            cursor.execute("INSERT INTO codigos_qr (codigo, activo) VALUES (%s, 1)", (nuevo_codigo,))
+            fecha_exp = datetime.now() + timedelta(minutes=1)
+            cursor.execute("""
+            INSERT INTO codigos_qr
+            (codigo, fecha_expiracion, activo)
+            VALUES (%s, %s, 1)
+        """, (nuevo_codigo, fecha_exp))
             conn.commit()
             return True
+        except Exception as e:
+            print("Error rotando QR:", e)
+            return False
         finally:
-            cursor.close(); conn.close()
+            cursor.close()
+            conn.close()
             
     def obtener_qr_activo(self):
         conn = self.db.get_connection()
