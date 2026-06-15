@@ -33,7 +33,7 @@ def AsistenciaView(page: ft.Page, auth_controller=None):
                 page.update()
         dlg_modal = ft.AlertDialog(modal=True, title=ft.Text("Agregar Nuevo Grupo"), content=campo_nombre,
             actions=[ft.TextButton("Cancelar", on_click=lambda e: setattr(dlg_modal, "open", False) or page.update()), 
-                     ft.TextButton("Guardar", on_click=procesar_guardado)])
+                    ft.TextButton("Guardar", on_click=procesar_guardado)])
         page.overlay.append(dlg_modal)
         dlg_modal.open = True
         page.update()
@@ -68,7 +68,9 @@ def AsistenciaView(page: ft.Page, auth_controller=None):
             page.go("/")
         img_qr = ft.Image(src=generar_qr_para_grupo(nombre_grupo), width=200, height=200)
         qr_activo[0] = True
-        alumnos_totales = auth_controller.obtener_alumnos_presentes(nombre_grupo) if auth_controller else []
+        print(f"DEBUG: Intentando obtener alumnos para Grupo: {nombre_grupo}, Maestro ID: {id_maestro}")
+        alumnos_totales = auth_controller.obtener_alumnos_presentes(nombre_grupo, id_maestro)
+        print(f"DEBUG: Alumnos encontrados: {len(alumnos_totales)}")      
         filtro_fecha = [None]
         lista_columna = ft.Column(scroll=ft.ScrollMode.AUTO, expand=True)
 
@@ -96,15 +98,20 @@ def AsistenciaView(page: ft.Page, auth_controller=None):
 
         async def refrescar_qr():
             await asyncio.sleep(1)
-            while qr_activo[0]:              
+            # Solo ejecutamos si el control existe y tiene una página asignada
+            while qr_activo[0]:
                 try:
-                    if img_qr.page is not None:
+                    # Verificamos si img_qr sigue en la página antes de actualizar
+                    if img_qr.page:
                         if auth_controller and hasattr(auth_controller, "rotar_codigo_qr"):
                             auth_controller.rotar_codigo_qr()
                         img_qr.src = generar_qr_para_grupo(nombre_grupo)
-                        page.update()
+                        img_qr.update() # Actualizamos SOLO el control de imagen
+                    else:
+                        break # Si el control ya no está en la página, detenemos el loop
                 except Exception as ex:
                     print("Error actualizando QR:", ex)
+                    break 
                 await asyncio.sleep(60)
 
         buscador = ft.TextField(label="Buscar por nombre", prefix_icon=ft.Icons.SEARCH, on_change=filtrar_datos, width=300)

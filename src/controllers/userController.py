@@ -21,9 +21,15 @@ class AuthController:
 
     def login(self, correo, password, page):
         user = self.user_model.login_usuario(correo, password)
-        print("DEBUG USER:", user)
         if user:
-            return user, "Correcto"
+            # Intentamos obtener el ID, buscando primero por 'id_usuario' y luego por 'id_alumno'
+            id_real = user.get("id_usuario") or user.get("id_alumno")
+            
+            if id_real:
+                self.set_usuario_actual(id_real)
+                return user, "Correcto"
+            else:
+                return None, "Error: El usuario no tiene un ID válido."
         return None, "Correo o contraseña incorrectos"
 
     def verificar_codigo_recuperacion(self, correo, codigo_ingresado):
@@ -52,12 +58,11 @@ class AuthController:
             print(f"Error al cambiar password: {e}")
             return False
 
-    def registrar_asistencia_qr(self, matricula):
+    def registrar_asistencia_qr(self,matricula,id_maestro,grupo):
         try:
-            ya_asistio = self.user_model.verificar_asistencia_existente(matricula)
-            if ya_asistio:
-                return False, "Ya registraste tu asistencia el día de hoy."
-            exito = self.user_model.insertar_asistencia(matricula)            
+            if self.user_model.verificar_asistencia_existente(matricula):
+                    return False, "Ya registraste tu asistencia el día de hoy."
+            exito = self.user_model.insertar_asistencia(matricula, id_maestro, grupo)     
             if exito:
                 return True, "Asistencia registrada con éxito."
             else:
@@ -71,22 +76,14 @@ class AuthController:
     def rotar_codigo_qr(self):
         return self.user_model.rotar_codigo_qr()
 
-    def obtener_alumnos_presentes(self, nombre_grupo):
+    def obtener_alumnos_presentes(self, nombre_grupo, id_maestro):
         try:
-            if hasattr(self.user_model, "consultar_presentes_hoy"):
-                datos = self.user_model.consultar_presentes_hoy(nombre_grupo)                
-                print(f"DEBUG: Datos recibidos del modelo para grupo {nombre_grupo}:")
-                if datos:
-                    print(f"Tipo de dato: {type(datos)}")
-                    print(f"Contenido del primer registro: {datos[0]}")
-                    print(f"Claves disponibles: {datos[0].keys() if isinstance(datos[0], dict) else 'No es un diccionario'}")
-                else:
-                    print("DEBUG: El modelo devolvió una lista vacía.")                
-                return datos
-            return []
+            datos = self.user_model.consultar_presentes_hoy(nombre_grupo, id_maestro)
+            print(f"DEBUG: Datos recibidos para {nombre_grupo}: {datos}")
+            return datos if datos else []
         except Exception as e:
             print(f"Error en obtener_alumnos_presentes: {e}")
-            return []
+        return []
 
     def obtener_alumnos_ausentes(self):
         try:

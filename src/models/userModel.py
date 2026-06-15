@@ -28,7 +28,7 @@ class UsuarioModel:
                     stored_password = stored_password.encode("utf-8")
                 
                 if bcrypt.checkpw(password.encode("utf-8"), stored_password):
-                    user["id"] = user.get("id_usuario") or user.get("id_alumno")
+                    user["id_usuario"] = user.get("id_usuario") or user.get("id_alumno")                
                     return user
         except Exception as e:
             print("ERROR LOGIN:", e)
@@ -107,29 +107,28 @@ class UsuarioModel:
         print(f"DEBUG: Grupos encontrados: {grupos}")
         return grupos
 
-    def insertar_asistencia(self, matricula):
+    def insertar_asistencia(self, matricula, id_maestro, grupo): 
         conn = self.db.get_connection()
         cursor = conn.cursor()
         try:
-            # 1. Obtener ID del alumno
             cursor.execute("SELECT id_alumno FROM alumnos WHERE matricula = %s", (matricula,))
             res = cursor.fetchone()
-            if not res: return False
+            if not res: return False, "Alumno no encontrado."
             id_alumno = res[0]
-
-            # 2. Obtener QR activo
             cursor.execute("SELECT id_qr FROM codigos_qr WHERE activo = 1 LIMIT 1")
             res_qr = cursor.fetchone()
-            if not res_qr: return False
+            if not res_qr: return False, "No hay QR activo. Genera uno primero."
             id_qr = res_qr[0]
-            query = """INSERT INTO asistencia (id_alumno, id_qr, matricula, fecha, hora, estatus) 
-                    VALUES (%s, %s, %s, CURDATE(), CURTIME(), 'Presente')"""
-            cursor.execute(query, (id_alumno, id_qr, matricula))
+            query = """INSERT INTO asistencia (id_alumno, id_qr, matricula, fecha, hora, estado, id_maestro) 
+        VALUES (%s, %s, %s, CURDATE(), CURTIME(), 'PRESENTE', %s)"""
+            cursor.execute(query, (id_alumno, id_qr, matricula, id_maestro))
             conn.commit()
-            return True
+            return True, "Asistencia registrada con éxito."
         except Exception as e:
-            print(f"Error técnico: {e}")
-            return False
+            print(f"DEBUG ERROR DB: {e}")
+            return False, "Error de base de datos."
+        finally:
+            cursor.close(); conn.close()
 
     def verificar_asistencia_existente(self, matricula):
         conn = self.db.get_connection()
@@ -141,31 +140,24 @@ class UsuarioModel:
         finally:
             cursor.close(); conn.close()
 
-    def consultar_presentes_hoy(self, nombre_grupo):
+    def consultar_presentes_hoy(self, nombre_grupo, id_maestro):
         conn = self.db.get_connection()
         cursor = conn.cursor(dictionary=True)
+        
+        # Filtramos por maestro, por la fecha y por el grupo específico
         query = """
-        SELECT
-            a.matricula,
-            al.nombre,
-            DATE_FORMAT(a.fecha, '%Y-%m-%d') AS fecha,
-            DATE_FORMAT(a.hora, '%h:%i %p') AS hora,
-            a.estatus
+        SELECT a.matricula, al.nombre, a.fecha, a.hora, a.estado
         FROM asistencia a
-        INNER JOIN alumnos al
-            ON TRIM(a.matricula) = TRIM(al.matricula)
-        WHERE CONCAT(al.grado, '-', al.grupo) = %s
-        AND al.matricula != 'DOCENTE'
-        ORDER BY a.fecha DESC, a.hora DESC
+        INNER JOIN alumnos al ON TRIM(a.matricula) = TRIM(al.matricula)
+        WHERE a.id_maestro = %s 
+        AND a.fecha = CURDATE()
+        AND CONCAT(CAST(al.grado AS CHAR), '-', TRIM(al.grupo)) = %s
         """
         try:
-            cursor.execute(query, (nombre_grupo,))
-            datos = cursor.fetchall()
-            print("DEBUG SQL:", datos)
-            return datos
-        except Exception as e:
-            print(f"Error en consultar_presentes_hoy: {e}")
-            return []
+            # Imprimimos los filtros para confirmar qué estamos buscando
+            print(f"DEBUG: Buscando para Maestro: {id_maestro}, Grupo: {nombre_grupo}")
+            cursor.execute(query, (id_maestro, nombre_grupo))
+            return cursor.fetchall()
         finally:
             cursor.close(); conn.close()
 

@@ -84,7 +84,7 @@ def LoginView(page: ft.Page, auth_controller):
             print("USUARIO LOGUEADO:", user)
             page.user_data = user
             print("PAGE USER DATA:", page.user_data)
-            page.id_usuario_actual = user.get("id")
+            page.id_usuario_actual = user.get("id_usuario")
             page.user_role = user.get("rol")
             page.go("/asistencia" if user.get("rol") == "maestro" else "/dashboard")
         else:
